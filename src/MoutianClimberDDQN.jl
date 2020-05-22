@@ -29,12 +29,30 @@ function Reinforce.action(policy::QLearnPolicy, r, s, A)
 end
 
 function build_QLearnPolicy(state_dim::Int)
+    # Create a neural network
+
+    # build the Policy
+end
+
+function learn!(env::Reinforce.AbstractEnvironment, qpolicy::QLearnPolicy, num_eps)
+    # Build an epsilon greedy policy for the learning
+    π = ϵGreedyPolicy(startep, qpolicy)
+
+    for _ ∈ 1:num_eps
+        ep = Episide(env, π)
+        for (s, a, r, s′) ∈ ep
+            # Update Q NN
+        end
+
+        # decrease ϵ to be more greedy as episodes increase
+    end
+end
 
 env = MountainCar()
 
 function episode!(env, π = RandomPolicy())
     ep = Episode(env, π)
-    for (s, a, r, s′) in ep
+    for (s, a, r, s′) ∈ ep
         #gui(plot(env))
         print(r)
     end
