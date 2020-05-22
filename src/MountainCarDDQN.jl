@@ -27,7 +27,9 @@ mutable struct DeepQPolicy <: Reinforce.AbstractPolicy
 end
 
 function action(policy::DeepQPolicy, r, s, A)
-    s.velocity < 0 ? 1 : 3
+    # s.velocity < 0 ? 1 : 3
+    inputs = [s.position s.velocity]
+    argmax(policy.nn(inputs))
 end
 
 function build_DeepQPolicy(env, num_actions)
