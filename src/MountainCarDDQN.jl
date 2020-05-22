@@ -37,7 +37,7 @@ function build_DeepQPolicy(env, num_actions)
     model = Dense(nfields(env.state), num_actions, σ)
 
     # build the Policy
-    return DeepQPolicy(model)
+    DeepQPolicy(model)
 end
 
 function learn!(envir::E, qpolicy::DeepQPolicy, num_eps) where {E<:AbstractEnvironment}
