@@ -18,8 +18,8 @@ function action(policy::ϵGreedyPolicy, r, s, A)
 end
 
 function reset!(policy::ϵGreedyPolicy)
-    reset!(policy.greedy)
     # Leave the ϵ value alone since we want it to be preserved between episodes
+    reset!(policy.greedy)
 end
 
 mutable struct DeepQPolicy <: Reinforce.AbstractPolicy
@@ -43,6 +43,9 @@ end
 function learn!(envir::E, qpolicy::DeepQPolicy, num_eps) where {E<:AbstractEnvironment}
     # Build an epsilon greedy policy for the learning
     π = ϵGreedyPolicy(startep, qpolicy)
+
+    # Memory to hold past experience
+    
 
     for _ ∈ 1:num_eps
         ep = Episide(env, π)
