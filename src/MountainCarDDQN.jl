@@ -3,6 +3,8 @@ module MountainCarDDQN
 using Flux
 using Reinforce
 using Juno
+using Dates: now
+using BSON: @save, @load
 import Reinforce: action, reset!
 
 include("mountain_car.jl")
@@ -51,7 +53,7 @@ end
 _transformStateToInputs(state::MountainCarState) = [state.position; state.velocity]
 
 function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
-                update_freq=1000) where {E<:AbstractEnvironment}
+                update_freq=1000, chkpt_freq=3000) where {E<:AbstractEnvironment}
     # Build an epsilon greedy policy for the learning
     π = ϵGreedyPolicy(1.0, qpolicy)
 
@@ -59,20 +61,17 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
     num_successes = 0
 
     primaryNetwork = qpolicy.nn
-    if update_freq > 0
-        targetNetwork = deepcopy(primaryNetwork)
-    else
-        targetNetwork = primaryNetwork
-    end
+    targetNetwork = update_freq > 0 ? deepcopy(primaryNetwork) : primaryNetwork
 
     PlotPolicy(qpolicy, 1000, 5)
     # L(x,y) = Flux.mse(primaryNetwork(x), y)
     opt = Descent(0.01)
 
+    # Track the number of training steps completed so far
+    step = 1
     Juno.@progress ["learn ep"] for i ∈ 1:num_eps
         ep = Episode(env, π; maxn = 200)
         # ep = Episode(env, π)
-        step = 1
         for (s, a, r, s′) ∈ ep
             inputs = _transformStateToInputs(s)
             target = float(r) .+ discount_factor*dropdims(maximum(targetNetwork(_transformStateToInputs(s′)); dims=1); dims=1)
@@ -88,7 +87,12 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
 
             # If needed, update the target Network
             if update_freq > 0 && step % update_freq == 0
-                Flux.loadparams!(targetNetwork, params(primaryNetwork))
+                Flux.loadparams!(targetNetwork, Flux.params(primaryNetwork))
+            end
+
+            # If desired, save the network
+            if chkpt_freq > 0 && step % chkpt_freq == 0
+                @save "model_checkpoint.bson" primaryNetwork opt
             end
 
             # decrease ϵ to be more greedy as episodes increase
