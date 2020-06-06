@@ -50,7 +50,8 @@ end
 
 _transformStateToInputs(state::MountainCarState) = [state.position; state.velocity]
 
-function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor) where {E<:AbstractEnvironment}
+function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
+                update_freq=1000) where {E<:AbstractEnvironment}
     # Build an epsilon greedy policy for the learning
     π = ϵGreedyPolicy(1.0, qpolicy)
 
@@ -58,6 +59,12 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor) where 
     num_successes = 0
 
     primaryNetwork = qpolicy.nn
+    if update_freq > 0
+        targetNetwork = deepcopy(primaryNetwork)
+    else
+        targetNetwork = primaryNetwork
+    end
+
     PlotPolicy(qpolicy, 1000, 5)
     # L(x,y) = Flux.mse(primaryNetwork(x), y)
     opt = Descent(0.01)
@@ -65,9 +72,10 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor) where 
     Juno.@progress ["learn ep"] for i ∈ 1:num_eps
         ep = Episode(env, π; maxn = 200)
         # ep = Episode(env, π)
+        step = 1
         for (s, a, r, s′) ∈ ep
             inputs = _transformStateToInputs(s)
-            target = float(r) .+ discount_factor*dropdims(maximum(primaryNetwork(_transformStateToInputs(s′)); dims=1); dims=1)
+            target = float(r) .+ discount_factor*dropdims(maximum(targetNetwork(_transformStateToInputs(s′)); dims=1); dims=1)
             p = Flux.params(primaryNetwork)
 
             gs = Flux.gradient(p) do
@@ -78,6 +86,11 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor) where 
             Flux.Optimise.update!(opt, p, gs)
             # println(0.5*(primaryNetwork(inputs)[a] - target)^2)
 
+            # If needed, update the target Network
+            if update_freq > 0 && step % update_freq == 0
+                Flux.loadparams!(targetNetwork, params(primaryNetwork))
+            end
+
             # decrease ϵ to be more greedy as episodes increase
             π.ϵ -= 1.01/(num_eps*200)
 
@@ -85,6 +98,8 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor) where 
             if finished(env, s′)
                 num_successes += 1
             end
+
+            step += 1
         end
         # PlotPolicy(qpolicy, 1000, 0.001)
         # println("Total Reward After Episode $i: $(ep.total_reward)")
@@ -139,7 +154,7 @@ dQpolicy = build_DeepQPolicy(env, 3)
 handpolicy = HandPolicy()
 randpolicy = RandomPolicy()
 
-num_successes = learn!(env, dQpolicy, 200000, .9)
+num_successes = learn!(env, dQpolicy, 20000, .9)
 @show num_successes
 
 handAvgReward = 0.0
