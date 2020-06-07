@@ -3,14 +3,6 @@
 # which has header
 #  https://webdocs.cs.ualberta.ca/~sutton/MountainCar/MountainCar1.cp
 
-using Reinforce: AbstractEnvironment
-using LearnBase: DiscreteSet
-using RecipesBase
-using Distributions
-using Random: seed!
-
-import Reinforce: reset!, actions, finished, step!
-
 const min_position = -1.2
 const max_position = 0.6
 const max_speed = 0.07
@@ -28,7 +20,7 @@ mutable struct MountainCarState
   velocity::Float64
 end
 
-mutable struct MountainCar <: AbstractEnvironment
+mutable struct MountainCar <: Reinforce.AbstractEnvironment
   state::MountainCarState
   reward::Float64
   seed::Int
@@ -41,7 +33,7 @@ function reset!(env::MountainCar)
     env.seed = -1
   end
 
-  env.state.position = rand(Uniform(min_start, max_start))
+  env.state.position = rand(Distributions.Uniform(min_start, max_start))
   env.state.velocity = 0.0
 
   env
