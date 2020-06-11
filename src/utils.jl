@@ -32,6 +32,9 @@ function episode!(env, π = RandomPolicy(); maxn=0, render=false)
     for (s, a, r, s′) ∈ ep
         if render
             gui(plot(env))
+            @show s
+            @show a
+            @show s′
             sleep(0.01)
         end
     end

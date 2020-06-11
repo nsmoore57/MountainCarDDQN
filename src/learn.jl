@@ -1,5 +1,6 @@
 function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
-                update_freq=1000, chkpt_freq=3000) where {E<:AbstractEnvironment}
+                update_freq=1000, chkpt_freq=3000, replay_buffer_size=100,
+                train_batch_size=64) where {E<:AbstractEnvironment}
     # Build an epsilon greedy policy for the learning
     π = ϵGreedyPolicy(1.0, qpolicy)
 
@@ -10,29 +11,37 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
     primaryNetwork = qpolicy.nn
     targetNetwork = update_freq > 0 ? deepcopy(primaryNetwork) : primaryNetwork
 
-    # Buffer to hold the replay memory
+    # Replay Buffer
+    # TODO Add keyword variable instead of hardcoded capacity
+    mem = ReplayMemoryBuffer(replay_buffer_size)
 
-    PlotPolicy(qpolicy, 1000, 5)
     # L(x,y) = Flux.mse(primaryNetwork(x), y)
-    opt = Descent(0.01)
+    opt = ADAM()
 
     # Track the number of training steps completed so far
     step = 1
-    Juno.@progress ["learn ep"] for i ∈ 1:num_eps
-        ep = Episode(env, π; maxn = 200)
+    @showprogress 3 "Learning..." for i ∈ 1:num_eps
+        ep = Episode(env, π; maxn = 300)
         # ep = Episode(env, π)
         for (s, a, r, s′) ∈ ep
-            inputs = _transformStateToInputs(s)
-            target = float(r) .+ discount_factor*dropdims(maximum(targetNetwork(_transformStateToInputs(s′)); dims=1); dims=1)
+            # Save the step into the replay buffer
+            addexp!(mem, _transformStateToInputs(s), a, r, _transformStateToInputs(s′), finished(env, s′))
+
+            # Fill the buffer before training or lowering ϵ
+            length(mem) < replay_buffer_size && continue
+
+            # Training..........
+            (s_batch, a_batch, r_batch, s′_batch, done_batch) = sample(mem, train_batch_size)
+
+            target = dropdims(r_batch .+ discount_factor.*(1.0 .- done_batch).*maximum(targetNetwork(s′_batch); dims=1); dims=1)
             p = Flux.params(primaryNetwork)
 
             gs = Flux.gradient(p) do
-                currentQ = primaryNetwork(inputs)
-                currentQ_SA = currentQ[a]
-                loss = 0.5*(currentQ_SA .- target)^2
+                currentQ = primaryNetwork(s_batch)
+                currentQ_SA = currentQ[a_batch]
+                loss = Flux.mse(currentQ_SA, target)
             end
             Flux.Optimise.update!(opt, p, gs)
-            # println(0.5*(primaryNetwork(inputs)[a] - target)^2)
 
             # If needed, update the target Network
             if update_freq > 0 && step % update_freq == 0
@@ -45,6 +54,8 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
             end
 
             # decrease ϵ to be more greedy as episodes increase
+            # TODO: Need a better way/place to control this
+            #       Could make a function called decrease_ϵ(π) which is part of the ϵ greedy policy
             π.ϵ -= 1.01/(num_eps*200)
 
             # Flux.train!(L, Flux.params(primaryNetwork), [(_transformStateToInputs(s), target)], opt)
@@ -57,5 +68,6 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
         # PlotPolicy(qpolicy, 1000, 0.001)
         # println("Total Reward After Episode $i: $(ep.total_reward)")
     end
+    @save "model_checkpoint.bson" primaryNetwork
     num_successes
 end

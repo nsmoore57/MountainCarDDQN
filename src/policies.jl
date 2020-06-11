@@ -29,8 +29,8 @@ end
 function build_DeepQPolicy(env, num_actions)
     # Create a neural network
     # model = Dense(nfields(env.state), num_actions, σ)
-    model = Chain(Dense(nfields(env.state), 10, σ),
-                  Dense(10, num_actions, σ))
+    model = Chain(Dense(nfields(env.state), 100, σ),
+                  Dense(100, num_actions, σ))
 
     # build the Policy
     DeepQPolicy(model)
