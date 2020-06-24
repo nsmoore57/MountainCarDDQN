@@ -1,6 +1,7 @@
 module MountainCarDDQN
 
 using Flux
+using NNlib
 using Juno
 using Dates: now
 using DataStructures: CircularBuffer
@@ -17,6 +18,8 @@ using ProgressMeter
 using Plots
 gr()
 
+# Right now there is a dependence in the order of loading for the first two files
+# maybe re-structure to avoid this dependence
 include("mountain_car.jl")
 include("policies.jl")
 include("learn.jl")
@@ -24,7 +27,7 @@ include("utils.jl")
 include("memory.jl")
 
 # whether to load the saved model or start from scratch
-const load_prior = true
+const load_prior = false
 
 # Mountain Car Envivornment
 env = MountainCar()

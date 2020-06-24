@@ -1,5 +1,5 @@
 function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
-                update_freq=1000, chkpt_freq=3000, replay_buffer_size=100,
+                maxn=200, update_freq=1000, chkpt_freq=3000, replay_buffer_size=100,
                 train_batch_size=64) where {E<:AbstractEnvironment}
     # Build an epsilon greedy policy for the learning
     π = ϵGreedyPolicy(1.0, qpolicy)
@@ -21,7 +21,7 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
     # Track the number of training steps completed so far
     step = 1
     @showprogress 3 "Learning..." for i ∈ 1:num_eps
-        ep = Episode(env, π; maxn = 300)
+        ep = Episode(env, π; maxn = maxn)
         # ep = Episode(env, π)
         for (s, a, r, s′) ∈ ep
             # Save the step into the replay buffer
@@ -35,6 +35,9 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
 
             target = dropdims(r_batch .+ discount_factor.*(1.0 .- done_batch).*maximum(targetNetwork(s′_batch); dims=1); dims=1)
             p = Flux.params(primaryNetwork)
+
+            # May need this to help set the data type for loss - not sure
+            loss = 0.0
 
             gs = Flux.gradient(p) do
                 currentQ = primaryNetwork(s_batch)
@@ -51,6 +54,9 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
             # If desired, save the network
             if chkpt_freq > 0 && step % chkpt_freq == 0
                 @save "model_checkpoint.bson" primaryNetwork
+
+                ## Plot the policy every other save
+                step % (chkpt_freq*2) == 0 && PlotPolicy(qpolicy, 1000, 0)
             end
 
             # decrease ϵ to be more greedy as episodes increase
@@ -58,7 +64,6 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
             #       Could make a function called decrease_ϵ(π) which is part of the ϵ greedy policy
             π.ϵ -= 1.01/(num_eps*200)
 
-            # Flux.train!(L, Flux.params(primaryNetwork), [(_transformStateToInputs(s), target)], opt)
             if finished(env, s′)
                 num_successes += 1
             end
