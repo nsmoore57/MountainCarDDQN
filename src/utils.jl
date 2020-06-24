@@ -24,6 +24,7 @@ function PlotPolicy(policy, N::Int, sleeptime=0.0)
     scatter(pos_back, vel_back);
     scatter!(pos_none, vel_none);
     display(scatter!(pos_forward, vel_forward))
+    png("/home/nicholas/Dropbox/Policy.png")
     sleeptime != 0 && sleep(sleeptime)
 end
 
@@ -39,4 +40,31 @@ function episode!(env, π = RandomPolicy(); maxn=0, render=false)
         end
     end
     ep.total_reward, ep.niter
+end
+
+function build_DeepQPolicy(env, num_actions; double=true, dueling=true)
+    if double
+        if dueling
+            # Create a neural network
+            # model = Dense(nfields(env.state), num_actions, σ)
+            primaryVNetwork = Chain(Dense(nfields(env.state), 10, σ),
+                                   Dense(10, 1))
+            primaryANetwork = Chain(Dense(nfields(env.state), 10, σ),
+                                    Dense(10, num_actions))
+            return DuelingDouble_DeepQPolicy(primaryVNetwork, primaryANetwork)
+        else
+            # Create a neural network
+            # model = Dense(nfields(env.state), num_actions, σ)
+            primaryNetwork = Chain(Dense(nfields(env.state), 10, σ),
+                                   Dense(10, num_actions))
+            return Double_DeepQPolicy(primaryNetwork)
+        end
+    else
+        # Create a neural network
+        # model = Dense(nfields(env.state), num_actions, σ)
+        primaryNetwork = Chain(Dense(nfields(env.state), 10, σ),
+                               Dense(10, num_actions))
+        # build the Policy
+        return DeepQPolicy(primaryNetwork)
+    end
 end
