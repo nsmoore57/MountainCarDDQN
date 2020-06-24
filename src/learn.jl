@@ -7,16 +7,15 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
     # Track number of sucessful attempts
     num_successes = 0
 
-    # Set up the networks
-    primaryNetwork = qpolicy.nn
-    targetNetwork = update_freq > 0 ? deepcopy(primaryNetwork) : primaryNetwork
-
     # Replay Buffer
     # TODO Add keyword variable instead of hardcoded capacity
     mem = ReplayMemoryBuffer(replay_buffer_size)
 
     # L(x,y) = Flux.mse(primaryNetwork(x), y)
     opt = ADAM()
+
+    # Params to optimize
+    p = get_params(qpolicy)
 
     # Track the number of training steps completed so far
     step = 1
@@ -33,28 +32,23 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
             # Training..........
             (s_batch, a_batch, r_batch, s′_batch, done_batch) = sample(mem, train_batch_size)
 
-            target = dropdims(r_batch .+ discount_factor.*(1.0 .- done_batch).*maximum(targetNetwork(s′_batch); dims=1); dims=1)
-            p = Flux.params(primaryNetwork)
+            target = get_target(qpolicy, discount_factor, r_batch, done_batch, s′_batch)
 
             # May need this to help set the data type for loss - not sure
             loss = 0.0
 
             gs = Flux.gradient(p) do
-                currentQ = primaryNetwork(s_batch)
-                currentQ_SA = currentQ[a_batch]
+                currentQ_SA = get_QValues(qpolicy, s_batch)[a_batch]
                 loss = Flux.mse(currentQ_SA, target)
             end
             Flux.Optimise.update!(opt, p, gs)
 
             # If needed, update the target Network
-            if update_freq > 0 && step % update_freq == 0
-                Flux.loadparams!(targetNetwork, Flux.params(primaryNetwork))
-            end
+            update_freq > 0 && step % update_freq == 0 && update_target(qpolicy)
 
             # If desired, save the network
             if chkpt_freq > 0 && step % chkpt_freq == 0
-                @save "model_checkpoint.bson" primaryNetwork
-
+                save_policy(qpolicy)
                 ## Plot the policy every other save
                 step % (chkpt_freq*2) == 0 && PlotPolicy(qpolicy, 1000, 0)
             end
@@ -73,6 +67,6 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
         # PlotPolicy(qpolicy, 1000, 0.001)
         # println("Total Reward After Episode $i: $(ep.total_reward)")
     end
-    @save "model_checkpoint.bson" primaryNetwork
+    save_policy(qpolicy)
     num_successes
 end

@@ -1,7 +1,7 @@
 module MountainCarDDQN
 
 using Flux
-using NNlib
+using Flux.NNlib
 using Juno
 using Dates: now
 using DataStructures: CircularBuffer
@@ -39,7 +39,7 @@ const velocitys = 0.14*rand(10000)-0.07*ones(10000)
 
 # Either load previously saved policy or build a new one
 if load_prior
-    dQpolicy = DeepQPolicy(BSON.load("model_checkpoint.bson")[:primaryNetwork])
+    dQpolicy = load_policy()
 else
     dQpolicy = build_DeepQPolicy(env, 3)
 end
@@ -52,7 +52,7 @@ randpolicy = Reinforce.RandomPolicy()
 # PlotPolicy(dQpolicy, 1000, 3)
 
 
-num_successes = learn!(env, dQpolicy, 40000, .99)
+num_successes = learn!(env, dQpolicy, 1000, .99)
 # num_successes = learn!(env, dQpolicy, 100, .99)
 @show num_successes
 
@@ -74,15 +74,15 @@ learnsuccesses = 0
 
     R, n = episode!(env, handpolicy)
     handAvgReward = i == 1 ? R : (handAvgReward*(i-1.0) + R)/float(i)
-    (n ≥ 200) && (handsuccesses += 1)
+    (n < 200) && (handsuccesses += 1)
 
     R, n = episode!(env, randpolicy; maxn = 200)
     randAvgReward = i == 1 ? R : (randAvgReward*(i-1.0) + R)/float(i)
-    (n ≥ 200) && (randsuccesses += 1)
+    (n < 200) && (randsuccesses += 1)
 
     R, n = episode!(env, dQpolicy; maxn = 200)
     learnAvgReward = i == 1 ? R : (learnAvgReward*(i-1.0) + R)/float(i)
-    (n ≥ 200) && (learnsuccesses += 1)
+    (n < 200) && (learnsuccesses += 1)
 end
 println("hand  Avg: $handAvgReward with $handsuccesses successes")
 println("rand  Avg: $randAvgReward with $randsuccesses successes")
