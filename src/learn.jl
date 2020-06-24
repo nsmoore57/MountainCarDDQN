@@ -1,6 +1,6 @@
-function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
+function learn!(env::E, qpolicy::QPolicy, num_eps, discount_factor;
                 maxn=200, update_freq=1000, chkpt_freq=3000, replay_buffer_size=100,
-                train_batch_size=64) where {E<:AbstractEnvironment}
+                train_batch_size=64, render=false) where {E<:AbstractEnvironment}
     # Build an epsilon greedy policy for the learning
     π = ϵGreedyPolicy(1.0, qpolicy)
 
@@ -30,17 +30,27 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
             length(mem) < replay_buffer_size && continue
 
             # Training..........
+
+            # decrease ϵ to be 10% exploration and 90% exploitation
+            # TODO: Need a better way/place to control this
+            #       Could make a function called decrease_ϵ(π) which is part of the ϵ greedy policy
+            π.ϵ = 0.1
+
+            # Sample a batch from the replay buffer
             (s_batch, a_batch, r_batch, s′_batch, done_batch) = sample(mem, train_batch_size)
 
+            # Get the target values based on the next states
             target = get_target(qpolicy, discount_factor, r_batch, done_batch, s′_batch)
 
             # May need this to help set the data type for loss - not sure
             loss = 0.0
 
+            # Track gradients while calculating the loss
             gs = Flux.gradient(p) do
                 currentQ_SA = get_QValues(qpolicy, s_batch)[a_batch]
                 loss = Flux.mse(currentQ_SA, target)
             end
+            # Train the network(s)
             Flux.Optimise.update!(opt, p, gs)
 
             # If needed, update the target Network
@@ -50,14 +60,10 @@ function learn!(envir::E, qpolicy::DeepQPolicy, num_eps, discount_factor;
             if chkpt_freq > 0 && step % chkpt_freq == 0
                 save_policy(qpolicy)
                 ## Plot the policy every other save
-                step % (chkpt_freq*2) == 0 && PlotPolicy(qpolicy, 1000, 0)
+                render && step % (chkpt_freq*2) == 0 && PlotPolicy(qpolicy, 1000, 0)
             end
 
-            # decrease ϵ to be more greedy as episodes increase
-            # TODO: Need a better way/place to control this
-            #       Could make a function called decrease_ϵ(π) which is part of the ϵ greedy policy
-            π.ϵ -= 1.01/(num_eps*200)
-
+            # Record if this episode was successful
             if finished(env, s′)
                 num_successes += 1
             end

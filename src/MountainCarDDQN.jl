@@ -27,7 +27,7 @@ include("utils.jl")
 include("memory.jl")
 
 # whether to load the saved model or start from scratch
-const load_prior = false
+const load_prior = true
 
 # Mountain Car Envivornment
 env = MountainCar()
@@ -52,7 +52,7 @@ randpolicy = Reinforce.RandomPolicy()
 # PlotPolicy(dQpolicy, 1000, 3)
 
 
-num_successes = learn!(env, dQpolicy, 1000, .99)
+num_successes = learn!(env, dQpolicy, 10000, .99, render=false)
 # num_successes = learn!(env, dQpolicy, 100, .99)
 @show num_successes
 
@@ -90,6 +90,6 @@ println("learn Avg: $learnAvgReward with $learnsuccesses successes")
 
 # Plot the policy
 # PlotPolicy(handpolicy, 1000, 3)
-PlotPolicy(dQpolicy, 1000)
+PlotPolicy(dQpolicy, 10000)
 
 end # module
