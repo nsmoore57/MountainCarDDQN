@@ -52,7 +52,7 @@ randpolicy = Reinforce.RandomPolicy()
 # PlotPolicy(dQpolicy, 1000, 3)
 
 
-num_successes = learn!(env, dQpolicy, 10000, .99, render=false)
+num_successes = learn!(env, dQpolicy, 1000, .99, render=false, chkpt_freq=0)
 # num_successes = learn!(env, dQpolicy, 100, .99)
 @show num_successes
 

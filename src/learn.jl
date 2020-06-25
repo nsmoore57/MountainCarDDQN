@@ -1,3 +1,5 @@
+# TODO: use a struct or named tuple to handle all these arguments
+
 function learn!(env::E, qpolicy::QPolicy, num_eps, discount_factor;
                 maxn=200, update_freq=1000, chkpt_freq=3000, replay_buffer_size=100,
                 train_batch_size=64, render=false) where {E<:AbstractEnvironment}
@@ -9,7 +11,7 @@ function learn!(env::E, qpolicy::QPolicy, num_eps, discount_factor;
 
     # Replay Buffer
     # TODO Add keyword variable instead of hardcoded capacity
-    mem = ReplayMemoryBuffer(replay_buffer_size)
+    mem = PriorityReplayMemoryBuffer(replay_buffer_size)
 
     # L(x,y) = Flux.mse(primaryNetwork(x), y)
     opt = ADAM()
@@ -61,6 +63,7 @@ function learn!(env::E, qpolicy::QPolicy, num_eps, discount_factor;
             if chkpt_freq > 0 && step % chkpt_freq == 0
                 save_policy(qpolicy)
                 ## Plot the policy every other save
+                ## TODO: Add a function argument to handle this
                 render && step % (chkpt_freq*2) == 0 && PlotPolicy(qpolicy, 1000, 0)
             end
 
