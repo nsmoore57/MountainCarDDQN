@@ -21,7 +21,7 @@ function learn!(env::E, qpolicy::QPolicy, num_eps, discount_factor;
     step = 1
     @showprogress 3 "Learning..." for i ∈ 1:num_eps
         ep = Episode(env, π; maxn = maxn)
-        # ep = Episode(env, π)
+
         for (s, a, r, s′) ∈ ep
             # Save the step into the replay buffer
             addexp!(mem, _transformStateToInputs(s), a, r, _transformStateToInputs(s′), finished(env, s′))
@@ -50,6 +50,7 @@ function learn!(env::E, qpolicy::QPolicy, num_eps, discount_factor;
                 currentQ_SA = get_QValues(qpolicy, s_batch)[a_batch]
                 loss = Flux.mse(currentQ_SA, target)
             end
+
             # Train the network(s)
             Flux.Optimise.update!(opt, p, gs)
 
