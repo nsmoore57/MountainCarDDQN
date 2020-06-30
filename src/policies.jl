@@ -30,7 +30,7 @@ function action(policy::DeepQPolicy, r, s::MountainCarState, A)
 end
 
 get_QValues(policy::DeepQPolicy, inputs) = policy.primaryNetwork(inputs)
-get_target(policy::DeepQPolicy, discount_factor, r, done, s′) = dropdims(r .+ discount_factor.*(1.0 .- done).*maximum(policy.primaryNetwork(s′); dims=1); dims=1)
+get_target(policy::DeepQPolicy, γ, r, done, s′) = dropdims(r .+ γ.*(1.0 .- done).*maximum(policy.primaryNetwork(s′); dims=1); dims=1)
 get_params(policy::DeepQPolicy) = Flux.params(policy.primaryNetwork)
 
 
@@ -46,8 +46,13 @@ function action(policy::Double_DeepQPolicy, r, s::MountainCarState, A)
     argmax(policy.primaryNetwork(inputs))[1]
 end
 
+get_QValues(policy::Double_DeepQPolicy, inputs; primary=true) = primary ? policy.primaryNetwork(inputs) : policy.targetNetwork(inputs)
+
 get_QValues(policy::Double_DeepQPolicy, inputs) = policy.primaryNetwork(inputs)
-get_target(policy::Double_DeepQPolicy, discount_factor, r, done, s′) = dropdims(r .+ discount_factor.*(1.0 .- done).*maximum(policy.targetNetwork(s′); dims=1); dims=1)
+function get_target(policy::Double_DeepQPolicy, γ, r, done, s′)
+    a_batch = argmax(policy.primaryNetwork(s′), dims=1)
+    target = dropdims(r .+ γ.*(1.0 .- done).*policy.targetNetwork(s′)[a_batch], dims=1)
+end
 get_params(policy::Double_DeepQPolicy) = Flux.params(policy.primaryNetwork)
 
 update_target(policy::Double_DeepQPolicy) = Flux.loadparams!(policy.targetNetwork, Flux.params(policy.primaryNetwork))
@@ -67,8 +72,19 @@ function action(policy::DuelingDouble_DeepQPolicy, r, s::MountainCarState, A)
     argmax(get_QValues(policy,inputs))[1]
 end
 
-get_QValues(policy::DuelingDouble_DeepQPolicy, inputs) = policy.primaryVNetwork(inputs) .+ policy.primaryANetwork(inputs) .- mean(policy.primaryANetwork(inputs), dims=1)
-get_target(policy::DuelingDouble_DeepQPolicy, discount_factor, r, done, s′) = dropdims(r .+ discount_factor.*(1.0 .- done).*maximum(get_QValues(policy,s′); dims=1); dims=1)
+function get_QValues(policy::DuelingDouble_DeepQPolicy, inputs; primary=true)
+    if primary
+        return policy.primaryVNetwork(inputs) .+ policy.primaryANetwork(inputs) .- mean(policy.primaryANetwork(inputs), dims=1)
+    else
+        return policy.targetVNetwork(inputs) .+ policy.targetANetwork(inputs) .- mean(policy.targetANetwork(inputs), dims=1)
+    end
+end
+
+function get_target(policy::DuelingDouble_DeepQPolicy, γ, r, done, s′)
+    a_batch = argmax(get_QValues(policy, s′), dims=1)
+    target = dropdims(r .+ γ.*(1.0 .- done).*get_QValues(policy, s′, primary=false)[a_batch], dims=1)
+end
+
 get_params(policy::DuelingDouble_DeepQPolicy) = Flux.params(policy.primaryVNetwork, policy.primaryANetwork)
 
 function update_target(policy::DuelingDouble_DeepQPolicy)

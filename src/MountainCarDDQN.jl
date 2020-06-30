@@ -27,7 +27,7 @@ include("utils.jl")
 include("memory.jl")
 
 # whether to load the saved model or start from scratch
-const load_prior = true
+const load_prior = false
 
 # Mountain Car Envivornment
 env = MountainCar()
@@ -41,7 +41,8 @@ const velocitys = 0.14*rand(10000)-0.07*ones(10000)
 if load_prior
     dQpolicy = load_policy()
 else
-    dQpolicy = build_DeepQPolicy(env, 3)
+    dQpolicy = build_DeepQPolicy(env, 3, double=true, dueling=true)
+    @show typeof(dQpolicy)
 end
 
 # Other policies so we can compare them to the learned policy
@@ -52,9 +53,10 @@ randpolicy = Reinforce.RandomPolicy()
 # PlotPolicy(dQpolicy, 1000, 3)
 
 
-num_successes = learn!(env, dQpolicy, 1000, .99, render=false, chkpt_freq=0)
+num_successes, losses = learn!(env, dQpolicy, 1000, .99, render=false, chkpt_freq=0, maxn=300)
 # num_successes = learn!(env, dQpolicy, 100, .99)
 @show num_successes
+@show losses
 
 handAvgReward = 0.0
 handsuccesses = 0
@@ -90,6 +92,6 @@ println("learn Avg: $learnAvgReward with $learnsuccesses successes")
 
 # Plot the policy
 # PlotPolicy(handpolicy, 1000, 3)
-PlotPolicy(dQpolicy, 10000)
+# PlotPolicy(dQpolicy, 10000)
 
 end # module
