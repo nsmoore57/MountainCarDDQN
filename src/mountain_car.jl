@@ -27,6 +27,8 @@ mutable struct MountainCar <: Reinforce.AbstractEnvironment
 end
 MountainCar(seed=-1) = MountainCar(MountainCarState(0.0, 0.0), 0.0, seed)
 
+(s::MountainCarState)() = [s.position; s.velocity]
+
 function reset!(env::MountainCar)
   if env.seed >= 0
     seed!(env.seed)

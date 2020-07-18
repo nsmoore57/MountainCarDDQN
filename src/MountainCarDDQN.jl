@@ -1,20 +1,15 @@
-module MountainCarDDQN
-
 using Flux
 using Flux.NNlib
-using Juno
-using Dates: now
-using DataStructures: CircularBuffer
 using BSON: @save, @load
 import BSON
-using Random: seed!
 import Reinforce
 import Reinforce: reset!, actions, finished, step!, action, Episode
 import Reinforce: AbstractPolicy, AbstractEnvironment
 using LearnBase: DiscreteSet
+using Distributions
 using RecipesBase
-import Distributions
 using ProgressMeter
+using MooreDDQN
 using Plots
 gr()
 
@@ -22,9 +17,7 @@ gr()
 # maybe re-structure to avoid this dependence
 include("mountain_car.jl")
 include("policies.jl")
-include("learn.jl")
 include("utils.jl")
-include("memory.jl")
 
 # whether to load the saved model or start from scratch
 const load_prior = false
@@ -53,7 +46,7 @@ randpolicy = Reinforce.RandomPolicy()
 # PlotPolicy(dQpolicy, 1000, 3)
 
 
-num_successes, losses = learn!(env, dQpolicy, 1000, .99, render=false, chkpt_freq=0, maxn=300)
+num_successes, losses = learn!(env, dQpolicy, 50, .99, render=false, chkpt_freq=0, maxn=300)
 # num_successes = learn!(env, dQpolicy, 100, .99)
 @show num_successes
 @show losses
@@ -93,5 +86,3 @@ println("learn Avg: $learnAvgReward with $learnsuccesses successes")
 # Plot the policy
 # PlotPolicy(handpolicy, 1000, 3)
 # PlotPolicy(dQpolicy, 10000)
-
-end # module
