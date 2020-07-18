@@ -35,7 +35,6 @@ if load_prior
     dQpolicy = load_policy()
 else
     dQpolicy = build_DeepQPolicy(env, 3, double=true, dueling=true)
-    @show typeof(dQpolicy)
 end
 
 # Other policies so we can compare them to the learned policy
@@ -45,8 +44,18 @@ randpolicy = Reinforce.RandomPolicy()
 # Plot the policy before we get started
 # PlotPolicy(dQpolicy, 1000, 3)
 
+learnArgsList = Vector{Tuple{Symbol, Any}}()
+push!(learnArgsList, (:maxn,               200))
+push!(learnArgsList, (:update_freq,        100))
+push!(learnArgsList, (:chkpt_freq,         0))
+push!(learnArgsList, (:replay_buffer_size, 10000))
+push!(learnArgsList, (:train_batch_size,   32))
+push!(learnArgsList, (:render,             false))
+push!(learnArgsList, (:plot_freq,          0))
 
-num_successes, losses = learn!(env, dQpolicy, 50, .99, render=false, chkpt_freq=0, maxn=300)
+learnArgs = (; learnArgsList...)
+
+num_successes, losses = learn!(env, dQpolicy, 50, .99; learnArgs...)
 # num_successes = learn!(env, dQpolicy, 100, .99)
 @show num_successes
 @show losses

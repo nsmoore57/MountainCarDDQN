@@ -56,9 +56,10 @@ function step!(env::MountainCar, s::MountainCarState, a::Int)
   position = clamp(position, min_position, max_position)
   env.state = MountainCarState(position, velocity)
   # env.reward = -1
-  # env.reward = -1 + (finished(env, env.state) ? 100. : 0.)
+  env.reward = -0.01 + (finished(env, env.state) ? 1. : 0.)
+  # env.reward = finished(env, env.state) ? 1. : 0.
   # env.reward = env.state.position + (finished(env,env.state) ? 10 : 0)
-  env.reward = env.state.position
+  # env.reward = env.state.position
 
   return env.reward, env.state
 end
