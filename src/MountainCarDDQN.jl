@@ -53,8 +53,6 @@ push!(learnArgsList, (:update_freq,        100))
 push!(learnArgsList, (:chkpt_freq,         0))
 push!(learnArgsList, (:replay_buffer_size, 10000))
 push!(learnArgsList, (:train_batch_size,   32))
-push!(learnArgsList, (:render,             false))
-push!(learnArgsList, (:plot_freq,          0))
 
 learnArgs = (; learnArgsList...)
 
