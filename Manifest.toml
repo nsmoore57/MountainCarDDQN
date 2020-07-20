@@ -363,7 +363,7 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[MooreDDQN]]
 deps = ["BSON", "DataStructures", "Distributions", "Flux", "Juno", "LearnBase", "ProgressMeter", "Reinforce", "StatsBase"]
-path = "C:\\Users\\nsmoo\\.julia\\dev\\MooreDDQN"
+path = "/home/nicholas/.julia/dev/MooreDDQN"
 uuid = "a03c27cc-5316-478d-9505-9613f5ebe9dd"
 version = "0.1.0"
 
