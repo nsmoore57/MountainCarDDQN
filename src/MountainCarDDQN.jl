@@ -29,37 +29,43 @@ env = MountainCar()
 const positions = 1.8*rand(10000)-1.2*ones(10000)
 const velocitys = 0.14*rand(10000)-0.07*ones(10000)
 
-
 # Either load previously saved policy or build a new one
 if load_prior
     dQpolicy = load_policy()
 else
-    dQpolicy = build_DeepQPolicy(env, 3, double=true, dueling=true)
+    primaryBaseNetwork = Dense(nfields(env.state), 10, σ)
+    primaryVNetwork = Dense(10, 1)
+    primaryANetwork = Dense(10, 3)
+    dQpolicy = DuelingDouble_DeepQPolicy(primaryBaseNetwork, primaryVNetwork, primaryANetwork)
 end
 
-# Other policies so we can compare them to the learned policy
-handpolicy = HandPolicy()
-randpolicy = Reinforce.RandomPolicy()
 
 # Plot the policy before we get started
 # PlotPolicy(dQpolicy, 1000, 3)
 
+# Replay Buffer
+mem = PriorityReplayMemoryBuffer(10000, 32)
+
+# Arguments
 learnArgsList = Vector{Tuple{Symbol, Any}}()
 push!(learnArgsList, (:maxn,               200))
-push!(learnArgsList, (:opt,                ADAM(0.0001)))
+# push!(learnArgsList, (:opt,                ADAM(0.0001)))
 # push!(learnArgsList, (:opt,                Descent(0.001)))
-# push!(learnArgsList, (:opt,                RMSProp()))
+push!(learnArgsList, (:opt,                RMSProp()))
 push!(learnArgsList, (:update_freq,        100))
 push!(learnArgsList, (:chkpt_freq,         0))
-push!(learnArgsList, (:replay_buffer_size, 10000))
-push!(learnArgsList, (:train_batch_size,   32))
 
 learnArgs = (; learnArgsList...)
 
-num_successes, losses = learn!(env, dQpolicy, 50, .99; learnArgs...)
+num_successes, losses = learn!(env, dQpolicy, mem, 50, .99; learnArgs...)
 # num_successes = learn!(env, dQpolicy, 100, .99)
 @show num_successes
 @show losses
+
+####---Comparison to other policies---------------------
+# Other policies so we can compare them to the learned policy
+handpolicy = HandPolicy()
+randpolicy = Reinforce.RandomPolicy()
 
 handAvgReward = 0.0
 handsuccesses = 0
